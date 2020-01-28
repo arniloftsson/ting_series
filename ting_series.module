@@ -1,0 +1,197 @@
+<?php
+/**
+ * @file
+ * Code for the Ding Randers feature.
+ */
+use OpenSearch\OpenSearchTingObjectCollection;
+
+function ting_series_menu() {
+  $items = array();
+
+  $items['series/ting/ajax/%/%'] = array(
+    'title' => 'Show search carousel results',
+    'page callback' => 'ting_series_get_series',
+    'page arguments' => array(3),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  
+ return $items;
+}
+
+function ting_series_theme($existing, $type, $theme, $path) {
+  return array(
+      'ting_series_item' => array(
+          'variables' => array(
+              'title' => NULL,
+              'series_title' => NULL,
+              'cover' => NULL,
+          ),
+          'template' => 'ting-series-item',
+          'path' => $path . '/templates',
+      ),
+  );
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ *
+ * It simply tells panels where to find the .inc files that define various
+ * args, contexts, content_types.
+ */
+function ting_series_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'ctools' && !empty($plugin)) {
+    return "plugins/$plugin";
+  }
+}
+
+/**
+ * AJAX callback to retrieve carousel items.
+ *
+ * @param int $index
+ *   Configuration index.
+ * @param int $offset
+ *   Offset into result to fetch from.
+ */
+function ting_series_get_series($query) {
+   $query = urldecode($query);
+
+    file_put_contents("/var/www/drupal7vm/drupal/debug/series17.txt", print_r($query, TRUE), FILE_APPEND);
+  $cid = md5('new' . $query);
+$build =  ting_series_find_entities($query); 
+file_put_contents("/var/www/drupal7vm/drupal/debug/series8.txt", print_r($build, TRUE), FILE_APPEND);
+
+file_put_contents("/var/www/drupal7vm/drupal/debug/series18.txt", print_r($chunk , TRUE), FILE_APPEND);
+file_put_contents("/var/www/drupal7vm/drupal/debug/series19.txt", print_r($items , TRUE), FILE_APPEND);
+
+  if (isset($build)) {
+    cache_set($cid, $build, 'cache_ting_series', REQUEST_TIME + 604800); //86400
+  }
+
+  $output = '';
+  foreach ($build as $item) {
+     $output .= '<li class="ding-carousel-item">' . $item . ' </li>';
+  }
+
+  // Return JSON output.
+  drupal_json_output(array(
+    'content' => $output,
+    'offset' => 8,
+  ));
+
+
+}
+
+function ting_series_is_series($object) {
+  $series_title = $object->reply->getSeriesTitles();
+  file_put_contents("/var/www/drupal7vm/drupal/debug/series7.txt", print_r($series_title, TRUE), FILE_APPEND);
+  if (isset($series_title) && !(empty($series_title))) {
+file_put_contents("/var/www/drupal7vm/drupal/debug/series7.txt", print_r($series_title, TRUE), FILE_APPEND);
+    if (strpos($series_title[0][0], 'Krimiserien med ') === 0) {
+      return $series_title[0][0];
+    }
+  }
+  return false;
+}
+
+/**
+ * Find ting entities with covers from a query.
+ *
+ * @param string $query
+ *   Query to use.
+ * @param int $start
+ *   Offset to start from.
+ * @param int $size
+ *   Search chunk size to use.
+ * @param array $ignore
+ *   Material ids to skip.
+ *
+ * @return array
+ *   Array of found ting entities (an array), next start to use, and whether
+ *   the result end was reached.
+ */
+function ting_series_find_entities($query) {
+  $items = array();
+  $cqlDoctor = new TingSearchCqlDoctor($query);
+
+  //We assume max size off series is 50. If the series is bigger then that its 
+  //probable not at series which has relevance for the user.
+  $sal_query = ting_start_query()
+          ->withRawQuery($cqlDoctor->string_to_cql())
+          ->withPage(1)
+          ->withCount(50);
+
+  $results = $sal_query->execute();
+file_put_contents("/var/www/drupal7vm/drupal/debug/series16.txt", print_r($results, TRUE), FILE_APPEND);
+  if (!$results->hasMoreResults()) {
+    $finished = TRUE;
+  }
+
+  $objects = array();
+  foreach ($results->openSearchResult->collections as $collection) {
+//    $opensearch_collection = new OpenSearchTingObjectCollection($collection);
+    $objects[] = $collection->getPrimary_object();
+  }
+  
+  $sorted_objects = ting_series_sort($objects, $query);
+  
+  foreach ($sorted_objects as $object) {
+    $cover = ting_series_get_cover($object);
+    $series_title = ting_series_get_series_title($object, $query);
+    $items[] = theme('ting_series_item', array('title' => $object->getTitle(), 'series_title' => $series_title, 'cover' => $cover,));
+  }
+
+
+  file_put_contents("/var/www/drupal7vm/drupal/debug/series22.txt", print_r($items, TRUE), FILE_APPEND);
+
+
+  return $items;
+}
+
+function ting_series_sort($objects, $query) {
+  $results = array();
+  foreach ($objects as $object) {
+    $series_number = ting_series_get_series_number($object, $query);
+    $results[$series_number] = $object;
+  }
+  file_put_contents("/var/www/drupal7vm/drupal/debug/sort5.txt", print_r($results, TRUE), FILE_APPEND);
+  ksort($results);
+  file_put_contents("/var/www/drupal7vm/drupal/debug/sort6.txt", print_r($results, TRUE), FILE_APPEND);
+  return $results;
+
+}
+
+function ting_series_get_series_number($object, $query) {
+  $series_titles = $object->reply->getSeriesTitles();
+  foreach ($series_titles as $series_title) {
+    file_put_contents("/var/www/drupal7vm/drupal/debug/sort2.txt", print_r($series_title, TRUE), FILE_APPEND);
+    if ($series_title[0] == $query && isset($series_title[1])) {
+      return $series_title[1];
+    }
+  }
+}
+
+function ting_series_get_series_title($object, $query) {
+  file_put_contents("/var/www/drupal7vm/drupal/debug/sort3.txt", print_r($query, TRUE), FILE_APPEND);
+  $series_titles = $object->reply->getSeriesTitles();
+  foreach ($series_titles as $series_title) {
+    file_put_contents("/var/www/drupal7vm/drupal/debug/sort2.txt", print_r($series_title, TRUE), FILE_APPEND);
+    if ($series_title[0] == $query && isset($series_title[1])) {
+      file_put_contents("/var/www/drupal7vm/drupal/debug/sort4.txt", print_r('ramt' ,TRUE), FILE_APPEND);
+      return $series_title[0] . ' : ' . $series_title[1]; 
+    }   
+  }
+}
+
+
+function ting_series_get_cover($object) {
+  $image = theme('ting_object_cover', array('elements' => array('#object' => $object, '#image_style' => 'ding_list_medium')));
+  $options = array(
+      'html' => TRUE,
+      'attributes' => array('title' => $object->getTitle()),
+  );
+  return l($image, 'ting/collection/' . $object->id, $options);
+}
+
+
+

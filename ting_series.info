@@ -1,0 +1,10 @@
+name = Ting Series
+description = Displays the whole series a object is a part of
+package = Ding!
+version = "7.x-1.x-dev"
+core = 7.x
+dependencies[] = ting
+dependencies[] = opensearch
+
+
+
