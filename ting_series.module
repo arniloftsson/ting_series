@@ -85,39 +85,50 @@ file_put_contents("/var/www/drupal7vm/drupal/debug/series19.txt", print_r($items
 function ting_series_is_series($object) {
   $series_titles = $object->reply->getSeriesTitles();
   
-  //file_put_contents("/var/www/drupal7vm/drupal/debug/desc1.txt", print_r($series_description, TRUE), FILE_APPEND);
+  $relevant_series_title = NULL;
+  
+  file_put_contents("/var/www/drupal7vm/drupal/debug/other1.txt", print_r($series_titles, TRUE), FILE_APPEND);
   if (isset($series_titles) && !(empty($series_titles))) {
     foreach ($series_titles as $series_title) {
       if (strpos($series_title[0], 'Krimiserien med ') === 0) {
         return $series_title[0];
+      } elseif (count($series_title) == 2 && is_numeric($series_title[1])) { 
+        // We only include series which have a number in them. Other series
+        // vary and have to dirty data to be used.
+        $relevant_series_title = $series_title[0];
       }
     }
   }
-  
+
   $series_description = ting_series_process_series_description($object->reply->getRawSeriesDescription());
-  if (isset($series_description)) {
+  if (isset($series_description) && !empty($series_description)) {
     file_put_contents("/var/www/drupal7vm/drupal/debug/desc2.txt", print_r($series_description, TRUE), FILE_APPEND);
     return $series_description;
   }
-  return false;
+  
+  if (isset($relevant_series_title)) {
+    return $relevant_series_title;
+  }
+  
+  return NULL;
 }
 
   function ting_series_process_series_description($series_description) {
-    $parts = explode(':', $series_description);
+  $parts = explode(':', $series_description);
 
-    if (is_array($parts) && count($parts) >= 2) {
-      $prefix = $parts[0] . ': ';
+  if (is_array($parts) && count($parts) >= 2) {
+    $prefix = $parts[0] . ': ';
 
-      if (stripos($prefix, 'del af:') !== FALSE) {
-        return trim($parts[1]);
-      }
-      elseif (stripos($prefix, 'Samhørende:') !== FALSE) {
-        return  $parts[1];
-      }
+    if (stripos($prefix, 'del af:') !== FALSE) {
+      return trim($parts[1]);
+    } elseif (stripos($prefix, 'Samhørende:') !== FALSE) {
+      $first_title = explode(';', $parts[1]);
+      return trim($first_title[0]);
     }
-
-    return FALSE;
   }
+
+  return FALSE;
+}
 
 /**
  * Find ting entities with covers from a query.
