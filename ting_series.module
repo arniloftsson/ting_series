@@ -11,7 +11,7 @@ function ting_series_menu() {
   $items['series/ting/ajax/%/%'] = array(
     'title' => 'Show search carousel results',
     'page callback' => 'ting_series_get_series',
-    'page arguments' => array(3),
+    'page arguments' => array(4,5),
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
   );
@@ -53,12 +53,12 @@ function ting_series_ctools_plugin_directory($module, $plugin) {
  * @param int $offset
  *   Offset into result to fetch from.
  */
-function ting_series_get_series($query) {
+function ting_series_get_series($type, $query) {
    $query = urldecode($query);
-
+file_put_contents("/var/www/drupal7vm/drupal/debug/series41.txt", print_r($type, TRUE), FILE_APPEND);
     file_put_contents("/var/www/drupal7vm/drupal/debug/series17.txt", print_r($query, TRUE), FILE_APPEND);
   $cid = md5('new' . $query);
-$build =  ting_series_find_entities($query); 
+$build =  ting_series_find_entities($type, $query); 
 file_put_contents("/var/www/drupal7vm/drupal/debug/series8.txt", print_r($build, TRUE), FILE_APPEND);
 
 file_put_contents("/var/www/drupal7vm/drupal/debug/series18.txt", print_r($chunk , TRUE), FILE_APPEND);
@@ -84,15 +84,18 @@ file_put_contents("/var/www/drupal7vm/drupal/debug/series19.txt", print_r($items
 
 function ting_series_is_series($object) {
   $series_titles = $object->reply->getSeriesTitles();
-  
+
   $relevant_series_title = NULL;
-  
+
   file_put_contents("/var/www/drupal7vm/drupal/debug/other1.txt", print_r($series_titles, TRUE), FILE_APPEND);
   if (isset($series_titles) && !(empty($series_titles))) {
     foreach ($series_titles as $series_title) {
       if (strpos($series_title[0], 'Krimiserien med ') === 0) {
-        return $series_title[0];
-      } elseif (count($series_title) == 2 && is_numeric($series_title[1])) { 
+        return array(
+            'query' => $series_title[0],
+            'type' => 'title',
+        );
+      } elseif (count($series_title) == 2 && is_numeric($series_title[1])) {
         // We only include series which have a number in them. Other series
         // vary and have to dirty data to be used.
         $relevant_series_title = $series_title[0];
@@ -103,17 +106,23 @@ function ting_series_is_series($object) {
   $series_description = ting_series_process_series_description($object->reply->getRawSeriesDescription());
   if (isset($series_description) && !empty($series_description)) {
     file_put_contents("/var/www/drupal7vm/drupal/debug/desc2.txt", print_r($series_description, TRUE), FILE_APPEND);
-    return $series_description;
+    return array(
+        'query' => $series_description,
+        'type' => 'desc',
+    );
   }
-  
+
   if (isset($relevant_series_title)) {
-    return $relevant_series_title;
+    return array(
+        'query' => $relevant_series_title,
+        'type' => 'title',
+    );
   }
-  
+
   return NULL;
 }
 
-  function ting_series_process_series_description($series_description) {
+function ting_series_process_series_description($series_description) {
   $parts = explode(':', $series_description);
 
   if (is_array($parts) && count($parts) >= 2) {
@@ -146,7 +155,7 @@ function ting_series_is_series($object) {
  *   Array of found ting entities (an array), next start to use, and whether
  *   the result end was reached.
  */
-function ting_series_find_entities($query) {
+function ting_series_find_entities($type, $query) {
   $items = array();
   $series_query = str_replace('@serietitle', drupal_strtolower($query), variable_get('ting_search_register_serie_title', 'phrase.titleSeries="@serietitle"'));
   $cqlDoctor = new TingSearchCqlDoctor($series_query );
@@ -166,11 +175,11 @@ file_put_contents("/var/www/drupal7vm/drupal/debug/series16.txt", print_r($resul
     $objects[] = $collection->getPrimary_object();
   }
   
-  $sorted_objects = ting_series_sort($objects, $query);
+  $sorted_objects = ting_series_sort($objects, $query, $type);
   
   foreach ($sorted_objects as $object) {
     $cover = ting_series_get_cover($object);
-    $series_title = ting_series_get_series_title($object, $query);
+    $series_title = ting_series_get_series_title($object, $query, $type);
     $items[] = theme('ting_series_item', array('title' => $object->getTitle(), 'series_title' => $series_title, 'cover' => $cover,));
   }
 
@@ -181,42 +190,49 @@ file_put_contents("/var/www/drupal7vm/drupal/debug/series16.txt", print_r($resul
   return $items;
 }
 
-function ting_series_sort($objects, $query) {
+function ting_series_sort($objects, $query, $type) {
   $results = array();
-  $i = 0;
+
   foreach ($objects as $object) {
-    $series_number = ting_series_get_series_number($object, $query);
-    if ($series_number == 1000) {
-      $series_number += $i;
-      $i++;
+    $series_number = ting_series_get_series_number($object, $query, $type);
+    
+    //If there is no number we wont show the object.
+    if (isset($series_number)) {
+      $results[$series_number] = $object; 
     }
-    $results[$series_number] = $object;
   }
   file_put_contents("/var/www/drupal7vm/drupal/debug/sort5.txt", print_r($results, TRUE), FILE_APPEND);
   ksort($results);
-  file_put_contents("/var/www/drupal7vm/drupal/debug/sort6.txt", print_r($results, TRUE), FILE_APPEND);
+//  file_put_contents("/var/www/drupal7vm/drupal/debug/sort6.txt", print_r($results, TRUE), FILE_APPEND);
+//  foreach ($results as $key => $object) {
+//    $series_titles = $object->reply->getSeriesTitles();
+//    file_put_contents("/var/www/drupal7vm/drupal/debug/sort15.txt", print_r($key . '---', TRUE), FILE_APPEND);
+//    file_put_contents("/var/www/drupal7vm/drupal/debug/sort14.txt", print_r($series_titles, TRUE), FILE_APPEND);
+//  }
   return $results;
 
 }
 
-function ting_series_get_series_number($object, $query) {
-  $series_titles = $object->reply->getSeriesTitles();
-  foreach ($series_titles as $series_title) {
-    file_put_contents("/var/www/drupal7vm/drupal/debug/sort2.txt", print_r($series_title, TRUE), FILE_APPEND);
-    if ($series_title[0] == $query && isset($series_title[1])) {
-      return $series_title[1];
+function ting_series_get_series_number($object, $query, $type) {
+  if ($type == 'title') {
+    $series_titles = $object->reply->getSeriesTitles();
+    foreach ($series_titles as $series_title) {
+      file_put_contents("/var/www/drupal7vm/drupal/debug/sort2.txt", print_r($series_title, TRUE), FILE_APPEND);
+      if ($series_title[0] == $query && isset($series_title[1])) {
+        return $series_title[1];
+      }
+    }
+  } elseif ($type == 'desc') {
+    $series_description = $object->reply->getRawSeriesDescription();
+    $series_number = ting_series_get_series_description_number($series_description);
+    file_put_contents("/var/www/drupal7vm/drupal/debug/sort7.txt", print_r($series_description, TRUE), FILE_APPEND);
+
+    if ($series_number) {
+      return $series_number;
     }
   }
-  $series_description = $object->reply->getRawSeriesDescription();
-  $series_number = ting_series_get_series_description_number($series_description);
-  file_put_contents("/var/www/drupal7vm/drupal/debug/sort7.txt", print_r($series_description, TRUE), FILE_APPEND);
-  
-  if ($series_number) {
-    return $series_number;
-  } else {
-    //Todo fix this
-    return 1000; //If there is no number we put the object last.
-  }
+
+  return NULL; 
 }
 
 function ting_series_get_series_description_number($series_description) {
@@ -229,26 +245,26 @@ function ting_series_get_series_description_number($series_description) {
   return false; 
 }
 
-function ting_series_get_series_title($object, $query) {
-  file_put_contents("/var/www/drupal7vm/drupal/debug/sort3.txt", print_r($query, TRUE), FILE_APPEND);
-  $series_titles = $object->reply->getSeriesTitles();
-  if (isset($series_titles) && !(empty($series_titles ))) {
-    foreach ($series_titles as $series_title) {
-      file_put_contents("/var/www/drupal7vm/drupal/debug/sort2.txt", print_r($series_title, TRUE), FILE_APPEND);
-      if ($series_title[0] == $query && isset($series_title[1])) {
-        file_put_contents("/var/www/drupal7vm/drupal/debug/sort4.txt", print_r('ramt', TRUE), FILE_APPEND);
-        return $series_title[0] . ' : ' . $series_title[1];
+function ting_series_get_series_title($object, $query, $type) {
+  if ($type == 'title') {
+    $series_titles = $object->reply->getSeriesTitles();
+    if (isset($series_titles) && !(empty($series_titles))) {
+      foreach ($series_titles as $series_title) {
+        file_put_contents("/var/www/drupal7vm/drupal/debug/sorta2.txt", print_r($series_title, TRUE), FILE_APPEND);
+        if ($series_title[0] == $query && isset($series_title[1])) {
+          return $series_title[0] . ' : ' . $series_title[1];
+        }
       }
     }
-  } else {
+  } elseif ($type == 'desc') {
     $series_description = $object->reply->getRawSeriesDescription();
     file_put_contents("/var/www/drupal7vm/drupal/debug/sort9.txt", print_r($series_description, TRUE), FILE_APPEND);
     if (stripos($series_description, 'del af:') !== FALSE) {
       return $series_description;
     } elseif (stripos($series_description, 'Samhørende:') !== FALSE) {
       $parts = explode('Samhørende:', $series_description);
-      $first_title = explode(';', $parts[1]);     
-      return 'Del 1 af: ' . trim($first_title[0]); 
+      $first_title = explode(';', $parts[1]);
+      return 'Del 1 af: ' . trim($first_title[0]);
     }
   }
   return '';

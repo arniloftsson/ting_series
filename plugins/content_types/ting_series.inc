@@ -27,7 +27,7 @@ function ting_series_content_type_render($subtype, $conf, $args, $context) {
   $query = ting_series_is_series ($object);
    file_put_contents("/var/www/drupal7vm/drupal/debug/series6.txt", print_r($query, TRUE), FILE_APPEND);
   if (isset($query)) {
-    $cid = md5('new' . $query);
+    $cid = md5('new' . $query['query']);
 file_put_contents("/var/www/drupal7vm/drupal/debug/series30.txt", print_r("Ramt", TRUE), FILE_APPEND);
     if ($cache = cache_get($cid, 'cache_ting_series')) {
       $items = $cache->data;
@@ -40,8 +40,8 @@ file_put_contents("/var/www/drupal7vm/drupal/debug/series30.txt", print_r("Ramt"
 
     $carousels[] = array(
       '#type' => 'ding_carousel',
-      '#title' => $query,
-      '#path' => 'series/ting/ajax/' . urlencode($query),
+      '#title' => $query['query'],
+      '#path' => 'series/ting/ajax/' . $query['type'] . '/' . urlencode($query['query']),
       '#items' => $items,
       '#offset' => $offset, 
       // Add a single placeholder to fetch more content later if there is more
