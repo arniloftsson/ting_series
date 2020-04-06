@@ -55,15 +55,11 @@ function ting_series_ctools_plugin_directory($module, $plugin) {
  *   Offset into result to fetch from.
  */
 function ting_series_get_series($type, $query) {
-   $query = urldecode($query);
-file_put_contents("/var/www/drupal7vm/drupal/debug/series41.txt", print_r($type, TRUE), FILE_APPEND);
-    file_put_contents("/var/www/drupal7vm/drupal/debug/series17.txt", print_r($query, TRUE), FILE_APPEND);
+  $query = urldecode($query);
   $cid = md5('new' . $query);
-$build =  ting_series_find_entities($type, $query); 
-file_put_contents("/var/www/drupal7vm/drupal/debug/series8.txt", print_r($build, TRUE), FILE_APPEND);
+  $build = ting_series_find_entities($type, $query);
+//file_put_contents("/var/www/drupal7vm/drupal/debug/series8.txt", print_r($build, TRUE), FILE_APPEND);
 
-file_put_contents("/var/www/drupal7vm/drupal/debug/series18.txt", print_r($chunk , TRUE), FILE_APPEND);
-file_put_contents("/var/www/drupal7vm/drupal/debug/series19.txt", print_r($items , TRUE), FILE_APPEND);
 
   if (isset($build)) {
     cache_set($cid, $build, 'cache_ting_series', REQUEST_TIME + 604800); //86400
@@ -71,16 +67,14 @@ file_put_contents("/var/www/drupal7vm/drupal/debug/series19.txt", print_r($items
 
   $output = '';
   foreach ($build as $item) {
-     $output .= '<li class="ding-carousel-item">' . $item . ' </li>';
+    $output .= '<li class="ding-carousel-item">' . $item . ' </li>';
   }
 
   // Return JSON output.
   drupal_json_output(array(
-    'content' => $output,
-    'offset' => 8,
+      'content' => $output,
+      'offset' => 8,
   ));
-
-
 }
 
 function ting_series_is_series($object) {
@@ -88,7 +82,7 @@ function ting_series_is_series($object) {
 
   $relevant_series_title = NULL;
 
-  file_put_contents("/var/www/drupal7vm/drupal/debug/other1.txt", print_r($series_titles, TRUE), FILE_APPEND);
+  //file_put_contents("/var/www/drupal7vm/drupal/debug/other1.txt", print_r($series_titles, TRUE), FILE_APPEND);
   if (isset($series_titles) && !(empty($series_titles))) {
     foreach ($series_titles as $series_title) {
       if (strpos($series_title[0], 'Krimiserien med ') === 0) {
@@ -106,7 +100,6 @@ function ting_series_is_series($object) {
 
   $series_description = ting_series_process_series_description($object->reply->getRawSeriesDescription());
   if (isset($series_description) && !empty($series_description)) {
-    file_put_contents("/var/www/drupal7vm/drupal/debug/desc2.txt", print_r($series_description, TRUE), FILE_APPEND);
     return array(
         'query' => $series_description,
         'type' => 'desc',
@@ -169,7 +162,7 @@ function ting_series_find_entities($type, $query) {
           ->withCount(50);
 
   $results = $sal_query->execute();
-file_put_contents("/var/www/drupal7vm/drupal/debug/series16.txt", print_r($results, TRUE), FILE_APPEND);
+//file_put_contents("/var/www/drupal7vm/drupal/debug/series16.txt", print_r($results, TRUE), FILE_APPEND);
 
   $objects = array();
   foreach ($results->openSearchResult->collections as $collection) {
@@ -183,10 +176,6 @@ file_put_contents("/var/www/drupal7vm/drupal/debug/series16.txt", print_r($resul
     $series_title = ting_series_get_series_title($object, $query, $type);
     $items[] = theme('ting_series_item', array('title' => $object->getTitle(), 'series_title' => $series_title, 'cover' => $cover,));
   }
-
-
-  file_put_contents("/var/www/drupal7vm/drupal/debug/series22.txt", print_r($items, TRUE), FILE_APPEND);
-
 
   return $items;
 }
@@ -202,14 +191,8 @@ function ting_series_sort($objects, $query, $type) {
       $results[$series_number] = $object; 
     }
   }
-  file_put_contents("/var/www/drupal7vm/drupal/debug/sort5.txt", print_r($results, TRUE), FILE_APPEND);
+  //file_put_contents("/var/www/drupal7vm/drupal/debug/sort5.txt", print_r($results, TRUE), FILE_APPEND);
   ksort($results);
-//  file_put_contents("/var/www/drupal7vm/drupal/debug/sort6.txt", print_r($results, TRUE), FILE_APPEND);
-//  foreach ($results as $key => $object) {
-//    $series_titles = $object->reply->getSeriesTitles();
-//    file_put_contents("/var/www/drupal7vm/drupal/debug/sort15.txt", print_r($key . '---', TRUE), FILE_APPEND);
-//    file_put_contents("/var/www/drupal7vm/drupal/debug/sort14.txt", print_r($series_titles, TRUE), FILE_APPEND);
-//  }
   return $results;
 
 }
@@ -218,7 +201,6 @@ function ting_series_get_series_number($object, $query, $type) {
   if ($type == 'title') {
     $series_titles = $object->reply->getSeriesTitles();
     foreach ($series_titles as $series_title) {
-      file_put_contents("/var/www/drupal7vm/drupal/debug/sort2.txt", print_r($series_title, TRUE), FILE_APPEND);
       if ($series_title[0] == $query && isset($series_title[1])) {
         return $series_title[1];
       }
@@ -226,7 +208,6 @@ function ting_series_get_series_number($object, $query, $type) {
   } elseif ($type == 'desc') {
     $series_description = $object->reply->getRawSeriesDescription();
     $series_number = ting_series_get_series_description_number($series_description);
-    file_put_contents("/var/www/drupal7vm/drupal/debug/sort7.txt", print_r($series_description, TRUE), FILE_APPEND);
 
     if ($series_number) {
       return $series_number;
@@ -251,7 +232,6 @@ function ting_series_get_series_title($object, $query, $type) {
     $series_titles = $object->reply->getSeriesTitles();
     if (isset($series_titles) && !(empty($series_titles))) {
       foreach ($series_titles as $series_title) {
-        file_put_contents("/var/www/drupal7vm/drupal/debug/sorta2.txt", print_r($series_title, TRUE), FILE_APPEND);
         if ($series_title[0] == $query && isset($series_title[1])) {
           return $series_title[0] . ' : ' . $series_title[1];
         }
@@ -259,7 +239,6 @@ function ting_series_get_series_title($object, $query, $type) {
     }
   } elseif ($type == 'desc') {
     $series_description = $object->reply->getRawSeriesDescription();
-    file_put_contents("/var/www/drupal7vm/drupal/debug/sort9.txt", print_r($series_description, TRUE), FILE_APPEND);
     if (stripos($series_description, 'del af:') !== FALSE) {
       return $series_description;
     } elseif (stripos($series_description, 'Samhørende:') !== FALSE) {

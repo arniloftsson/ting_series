@@ -20,15 +20,11 @@ $plugin = array(
 function ting_series_content_type_render($subtype, $conf, $args, $context) {
   $block = new stdClass();
   $object = isset($context->data) ? ($context->data) : NULL;
-  //$object = menu_get_object('ting_object', 2);
-  file_put_contents("/var/www/drupal7vm/drupal/debug/series4.txt", print_r($object->reply->getSeriesDescription(), TRUE), FILE_APPEND);
-  file_put_contents("/var/www/drupal7vm/drupal/debug/series5.txt", print_r($object->reply->getSeriesTitles(), TRUE), FILE_APPEND);
   
   $query = ting_series_is_series ($object);
-   file_put_contents("/var/www/drupal7vm/drupal/debug/series6.txt", print_r($query, TRUE), FILE_APPEND);
+
   if (isset($query)) {
     $cid = md5('new' . $query['query']);
-file_put_contents("/var/www/drupal7vm/drupal/debug/series30.txt", print_r("Ramt", TRUE), FILE_APPEND);
     if ($cache = cache_get($cid, 'cache_ting_series')) {
       $items = $cache->data;
       $offset = -1;
