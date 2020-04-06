@@ -36,11 +36,15 @@ file_put_contents("/var/www/drupal7vm/drupal/debug/series30.txt", print_r("Ramt"
       $items = array();
       $offset = 0;
     }
-
+    $title = $query['query'];
+    
+    if (!(strpos(strtolower($title), 'serie') !== false)) {
+       $title = 'Serien ' . $title;
+    }
 
     $carousels[] = array(
       '#type' => 'ding_carousel',
-      '#title' => $query['query'],
+      '#title' => $title,
       '#path' => 'series/ting/ajax/' . $query['type'] . '/' . urlencode($query['query']),
       '#items' => $items,
       '#offset' => $offset, 
