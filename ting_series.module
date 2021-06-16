@@ -11,7 +11,7 @@ function ting_series_menu() {
   $items['series/ting/ajax/%/%'] = array(
     'title' => 'Show search carousel results',
     'page callback' => 'ting_series_get_series',
-    'page arguments' => array(4,5),
+    'page arguments' => array(3,4),
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
   );
@@ -163,7 +163,7 @@ function ting_series_find_entities($type, $query) {
 
   $results = $sal_query->execute();
 //file_put_contents("/var/www/drupal7vm/drupal/debug/series16.txt", print_r($results, TRUE), FILE_APPEND);
-
+//file_put_contents("/var/www/drupalvm/drupal/web/debug/series1.txt", print_r($results, TRUE), FILE_APPEND);
   $objects = array();
   foreach ($results->openSearchResult->collections as $collection) {
     $objects[] = $collection->getPrimary_object();
